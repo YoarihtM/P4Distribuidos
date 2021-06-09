@@ -49,23 +49,44 @@ class GUI():
             except socket.timeout:
                 print('No hubo respuesta')
 
-    def realizarPeticion(self):
-        grupoMulticast = '224.0.0.1'
-        puertos = [15000, 15001]
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1)
-        ttl = struct.pack('b', 1)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+    def conectar(self, direcciones):
+        conectado = True
         
-        for puerto in puertos:
+        while conectado:
+            for direccion in direcciones:
+                try:
+                    self.sock.sendto('iniciar conexion'.encode('utf-8'), direccion)
+                    print('Peticion enviada a ', direccion)
+                    mensaje, servidor = self.sock.recvfrom(255)
+                    if servidor == direccion:
+                        datos = mensaje.decode('utf-8')
+                        if datos.lower() == 'aceptado':
+                            conectado = False
+                            print('Peticion aceptada por ', direccion)
+                            return servidor
+                except:
+                    conectado = False
+                    print('No se pudo establecer conexion con ', direccion)
+    
+    def realizarPeticion(self):        
+        direcciones = (('192.168.100.57', 15000), ('192.168.100.57', 15001))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(1)
+        ttl = struct.pack('b', 1)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+        
+        direccion = self.conectar(direcciones)
+        
+        if direccion == None:
+            print('Conexion no establecida, intente de nuevo')
+        else:
             try:
-                sock.sendto(self.hora.getTiempo().encode('utf-8'), (grupoMulticast, puerto))
-
+                self.sock.sendto(self.hora.getTiempo().encode('utf-8'), direccion)
                 while True:
                     try:
-                        datos, servidor = sock.recvfrom(255)
-                        print('Peticion aceptada por ' + str(puerto))
-                        puerto = 0
+                        datos, servidor = self.sock.recvfrom(255)
+                        print('Peticion aceptada por ', servidor)
+                        print('-----------------------------------------')
                     except socket.timeout:
                         break
                     else:
@@ -73,7 +94,7 @@ class GUI():
                         l = datosLibros.split('[')
                         l1 = l[1].split(']')
                         l2 = l1[0].split(',')
-
+                        
                         if l2[0] == '0':
                             l3 = l2[1].split('(')
                             l4 = l2[5].split(')')
@@ -84,6 +105,7 @@ class GUI():
                             self.lblEditorial.config(text='Editorial: ' + l2[4])
                             self.lblPrecio.config(text='Precio: $' + l4[0])
                             self.frame.update()
+                            
                         else:
                             self.lblISBN.config(text='')
                             self.lblNombre.config(text='El servidor dice: ')
@@ -93,15 +115,14 @@ class GUI():
                             self.btnReiniciar = Button(self.frame, text='Pedir Reinicio de Sesion', command=self.reinicio)
                             self.btnReiniciar.pack()
                             self.frame.update()
-
             except socket.timeout:
                 print('No hubo respuesta')
-        
-        sock.close()
+                
+        self.sock.close()
     
     def __init__(self):
         self.root = Tk()
-        self.root.title('Practica 3 - Cliente')
+        self.root.title('Practica 4 - Cliente')
         self.root.geometry('400x300')
         self.root.resizable(0,0)
         self.frame = Frame()

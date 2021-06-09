@@ -38,4 +38,4 @@ class reloj:
         self.__hrs = hrs
         self.__mins = mins
         self.__segs = segs
-    
+
